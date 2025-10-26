@@ -11,25 +11,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link } from "react-router";
+import { useForm, type FieldValues } from "react-hook-form";
+import useLogin from "@/hooks/api/auth/useLogin";
+import Cookies from "js-cookie";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { LoginFormValidation } from "@/validation/AuthValidation";
 
 interface LoginFormProps {}
 
 const LoginForm: React.FC<LoginFormProps> = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const { mutate, isPending } = useLogin();
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // Hook point: replace with real auth logic
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const payload = {
-      email: formData.get("email") as string | null,
-      password: formData.get("password") as string | null,
-      remember,
-    };
-    console.log("login attempt", payload);
-  }
+  const {
+    handleSubmit,
+    register,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(LoginFormValidation),
+  });
+
+  const submitForm = (formData: FieldValues) => {
+    mutate(formData as any);
+  };
 
   return (
     <Card className="w-full max-w-md bg-white/[0.05] text-gray-100 border-0 backdrop-blur-xl shadow-2xl rounded-2xl relative overflow-hidden">
@@ -42,7 +46,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
       </CardHeader>
 
       <CardContent className="px-8 pb-0 relative">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(submitForm)} className="space-y-6">
           <div className="group">
             <Label
               htmlFor="email"
@@ -51,12 +55,21 @@ const LoginForm: React.FC<LoginFormProps> = () => {
               Email
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="username@email.com"
-                required
                 className=" outline-none border-none focus:outline-none  bg-white/5   transition-all duration-300"
+                {...register("email", {
+                  required: {
+                    message: "This field is required",
+                    value: true,
+                  },
+                })}
               />
+              {errors?.email && (
+                <div className="text-sm text-red-500">
+                  {`${errors?.email?.message}`}
+                </div>
+              )}
             </Label>
           </div>
 
@@ -75,14 +88,17 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 Forgot?
               </a>
             </div>
-
             <div className="relative mt-2">
               <Input
                 id="password"
-                name="password"
                 type={showPassword ? "text" : "password"}
-                required
                 className="bg-white/5 border-white/10 focus:border-purple-500/50 focus:ring-purple-500/30 transition-all duration-300"
+                {...register("password", {
+                  required: {
+                    message: "This field is required",
+                    value: true,
+                  },
+                })}
               />
               <button
                 type="button"
@@ -93,14 +109,20 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
+            {errors?.password && (
+              <div className="text-sm text-red-500">
+                {`${errors?.password?.message}`}
+              </div>
+            )}
           </div>
 
           <Button
             type="submit"
             className="w-full cursor-pointer bg-gradient-to-r from-primary-purple to-secondary-purple  text-white border-0 shadow-lg shadow-purple-500/20 transition-all duration-300 hover:scale-[1.02]"
             variant="default"
+            disabled={isPending}
           >
-            Sign in
+            {isPending ? "loading..." : "Sign in"}
           </Button>
         </form>
       </CardContent>

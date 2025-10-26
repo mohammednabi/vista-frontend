@@ -5,31 +5,35 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link } from "react-router";
+import useSignup from "@/hooks/api/auth/useSignup";
+import { useForm, type FieldValues } from "react-hook-form";
+import { SignupFormValidation } from "@/validation/AuthValidation";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface SignupFormProps {}
 
 const SignupForm: React.FC<SignupFormProps> = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const { mutate, isPending } = useSignup();
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // Hook point: replace with real auth logic
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const payload = {
-      email: formData.get("email") as string | null,
-      password: formData.get("password") as string | null,
-      remember,
-    };
-    console.log("login attempt", payload);
-  }
+  const {
+    handleSubmit,
+    register,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(SignupFormValidation),
+  });
+
+  const submitForm = (formData: FieldValues) => {
+    delete formData.repeatPassword;
+    mutate(formData as any);
+  };
 
   return (
     <Card className="w-full max-w-md bg-white/[0.05] text-gray-100 border-0 backdrop-blur-xl shadow-2xl rounded-2xl relative overflow-hidden">
@@ -42,7 +46,7 @@ const SignupForm: React.FC<SignupFormProps> = () => {
       </CardHeader>
 
       <CardContent className="px-8 pb-0 relative">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(submitForm)} className="space-y-6">
           <div className="group">
             <Label
               htmlFor="username"
@@ -51,12 +55,21 @@ const SignupForm: React.FC<SignupFormProps> = () => {
               Username
               <Input
                 id="username"
-                name="username"
-                type="username"
+                type="text"
                 placeholder="my username"
-                required
                 className=" outline-none border-none focus:outline-none  bg-white/5   transition-all duration-300"
+                {...register("username", {
+                  required: {
+                    message: "This field is required",
+                    value: true,
+                  },
+                })}
               />
+              {errors?.username && (
+                <div className="text-sm text-red-500">
+                  {`${errors?.username?.message}`}
+                </div>
+              )}
             </Label>
           </div>
           <div className="group">
@@ -67,12 +80,21 @@ const SignupForm: React.FC<SignupFormProps> = () => {
               Email
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="username@email.com"
-                required
                 className=" outline-none border-none focus:outline-none  bg-white/5   transition-all duration-300"
+                {...register("email", {
+                  required: {
+                    message: "This field is required",
+                    value: true,
+                  },
+                })}
               />
+              {errors?.email && (
+                <div className="text-sm text-red-500">
+                  {`${errors?.email?.message}`}
+                </div>
+              )}
             </Label>
           </div>
 
@@ -95,10 +117,14 @@ const SignupForm: React.FC<SignupFormProps> = () => {
             <div className="relative mt-2">
               <Input
                 id="password"
-                name="password"
                 type={showPassword ? "text" : "password"}
-                required
                 className="bg-white/5 border-white/10 focus:border-purple-500/50 focus:ring-purple-500/30 transition-all duration-300"
+                {...register("password", {
+                  required: {
+                    message: "This field is required",
+                    value: true,
+                  },
+                })}
               />
               <button
                 type="button"
@@ -109,6 +135,11 @@ const SignupForm: React.FC<SignupFormProps> = () => {
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
+            {errors?.password && (
+              <div className="text-sm text-red-500">
+                {`${errors?.password?.message}`}
+              </div>
+            )}
           </div>
 
           <div className="group">
@@ -130,10 +161,19 @@ const SignupForm: React.FC<SignupFormProps> = () => {
             <div className="relative mt-2">
               <Input
                 id="repeatPassword"
-                name="repeatPassword"
                 type={showPassword ? "text" : "password"}
-                required
                 className="bg-white/5 border-white/10 focus:border-purple-500/50 focus:ring-purple-500/30 transition-all duration-300"
+                {...register("repeatPassword", {
+                  required: {
+                    message: "This field is required",
+                    value: true,
+                  },
+                  validate: (value: any) => {
+                    if (value !== getValues("password")) {
+                      return "Passwords Don't Match";
+                    }
+                  },
+                })}
               />
               <button
                 type="button"
@@ -144,14 +184,20 @@ const SignupForm: React.FC<SignupFormProps> = () => {
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
+            {errors?.repeatPassword && (
+              <div className="text-sm text-red-500">
+                {`${errors?.repeatPassword?.message}`}
+              </div>
+            )}
           </div>
 
           <Button
             type="submit"
             className="w-full cursor-pointer bg-gradient-to-r from-primary-purple to-secondary-purple  text-white border-0 shadow-lg shadow-purple-500/20 transition-all duration-300 hover:scale-[1.02]"
             variant="default"
+            disabled={isPending}
           >
-            Sign up
+            {isPending ? "loading..." : "Sign Up"}
           </Button>
         </form>
       </CardContent>
